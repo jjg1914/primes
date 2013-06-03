@@ -1,2 +1,5 @@
 primes
 *.o
+*.s
+*.out
+*.test

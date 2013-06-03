@@ -13,14 +13,16 @@
 #define FLAG_NO_ALARM         (0x2)
 #define FLAG_NO_DIAGNOSE      (0x4)
 
-#define ESIEVE_RESULTS_MAX    ( INT_MAX / ( 32 ) )
+#define ESIEVE_RESULTS_MAX    ( UINT_MAX / ( 32 ) )
 unsigned int esieve_results[ESIEVE_RESULTS_MAX];
 #define ESIEVE_GET_RESULT( i ) \
   ( ( esieve_results[i >> 5] & ( 1 << ( i & 31 ) ) ) )
 #define ESIEVE_SET_RESULT( i ) \
   ( esieve_results[i >> 5] |= ( 1 << ( i & 31 ) ) ) 
 
-unsigned int t0 = 0, t1 = 0, total_results = 0;
+unsigned int t0 = 0, t1 = 0;
+
+volatile unsigned int total_results = 0;
 
 void alarm_handler( int z ) {
   unsigned int dt = time( NULL ) - t0;
@@ -41,17 +43,17 @@ void eratosthenes( unsigned int flags ) {
   ESIEVE_SET_RESULT( 1 );
 
   i = 4;
-  while ( i < INT_MAX ) {
+  while ( i > 3 ) { // check overflow
     ESIEVE_SET_RESULT( i );
     i += 2;
   }
 
   i = 3;
-  while ( i < ( INT_MAX / 2 ) ) {
+  while ( i < ( UINT_MAX / 2 ) ) {
     if ( !ESIEVE_GET_RESULT( i ) ) {
       ++total_results;
       unsigned int j = i << 1;
-      while ( j < INT_MAX ) {
+      while ( j > i ) { // check overflow
         ESIEVE_SET_RESULT( j );
         j += i;
       }
@@ -59,7 +61,7 @@ void eratosthenes( unsigned int flags ) {
     i += 2;
   }
 
-  while ( i < INT_MAX ) {
+  while ( i != 0 ) {
     if ( !ESIEVE_GET_RESULT( i ) ) {
       ++total_results;
     }
@@ -70,11 +72,12 @@ void eratosthenes( unsigned int flags ) {
 
   if ( flags & FLAG_PRINT_RESULTS ) {
     i = 0;
-    while ( i < INT_MAX ) {
+    do {
       if ( !ESIEVE_GET_RESULT( i ) ) {
         printf( "%i\n", i );
       }
-    }
+      ++i;
+    } while ( i != 0 );
   }
 }
 
@@ -84,6 +87,7 @@ int main( int argc, char *argv[] ) {
 
   while( i < argc ) {
     if ( strcmp( SWITCH_PRINT_RESULTS, argv[i] ) == 0 ) {
+      fprintf( stderr, "print results\n" );
       flags |= FLAG_PRINT_RESULTS;
     } else if ( strcmp( SWITCH_NO_ALARM, argv[i] ) == 0 ) {
       flags |= FLAG_NO_ALARM;
